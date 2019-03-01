@@ -7,19 +7,21 @@ import re
 def makeArgs():
     parser = argparse.ArgumentParser(
         description="This script will create a mani file from a given directory of files with options to set the overall format", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("-Input", required=True, help="Path to file/s or directory/ies")
-    parser.add_argument("-multiple", action='store_true', help="This option allows mutiple file/directories for the Input option seperated by commas")
-    parser.add_argument("-metaBuild", nargs=2, default=("_", 1), help="This option builds a meta tag from the file name. It takes two arguments the first being the divider for parts of the filename and the second being how much of the filename you want in the meta. By default it splits the file by underbar and takes up to the first underbar.")
+    parser.add_argument("-Input", required=True, nargs='+', help="Path to file/s or directory/ies")
+    parser.add_argument("-multiple", action='store_true', help="This option allows mutiple file/directories for the Input option seperated by commas or with a *")
+    parser.add_argument("-metaBuild", default=("_,1"), help="This option builds a meta tag from the file name. It takes two arguments the first being what to divide on and the second being which parts to take. If a single number is give it will take up to that part but if you want to select parts out of order put the ones desired seperate by commas. By default it splits the file by underbar and takes up to the first underbar.")
     parser.add_argument("-metaFile", help="A file containing a single column of meta tags. If no file or format given will take first part of filename up to the first underbar/score")
     parser.add_argument("-metaFormat", nargs='*', help="Meta tag format. This takes two arguemnts, tag format comma seperated ex. (barcode,lane) and a delimitor to seperate the values ex.(-). If no format or file given will take first part of filename up to the first underbar/score. To reference generated meta in this variable input meta into format")
     parser.add_argument("-order", default="file,lane,output,format,paired_end,meta", help="A list for the header order seperated by commas. Only restriction is format can't be last header in list")
+    parser.add_argument("-metaCustom", help="A custom meta field")
     parser.add_argument("-fileType", help="Format of files ex. (fastq,fastqc). If variable formats in directory select -findType.")
     parser.add_argument("-findType", action='store_true', help="This option allows mutiple formats to occur in directory and will utlize the extension to determine the file format")
     parser.add_argument("-ProcessOutput", default="reads", help="Output of process that create files ex. (reads,fastqc)")
     parser.add_argument("-ucsc_db", default="hg38", help="UCSC reference assembly identifier")
     parser.add_argument("-pipeline", help="Pipeline used to create file")
     parser.add_argument("-ref_gene_set", help="Reference gene set")
-    parser.add_argument("-outputFile", required=True, help="Output file")
+    parser.add_argument("-outputFile",  help="Output file")
+    parser.add_argument("-outputFileAdd", help="Output file to append new files.")
     return parser
 
 
@@ -31,6 +33,7 @@ if __name__ == "__main__":
     metaBuild = arguments.metaBuild
     metaFile = arguments.metaFile
     metaFormat = arguments.metaFormat
+    metaCustom = arguments.metaCustom
     order = arguments.order
     fileType = arguments.fileType
     findType = arguments.findType
@@ -39,6 +42,7 @@ if __name__ == "__main__":
     pipeline = arguments.pipeline
     ref_gene = arguments.ref_gene_set
     outputFile = arguments.outputFile
+    addFile = arguments.outputFileAdd
 
 File = False
 Directory = False
@@ -46,17 +50,27 @@ MFile = False
 MDirectory = False
 order = order.lower()
 headers = order.split(",")
-out = open(outputFile, "w+")
-out.write(order.replace(",", "\t")+"\n")
-inputs = []
+if addFile:
+    out = open(addFile, "a")
+else:
+    out = open(outputFile, "wb")
+    out.write(order.replace(",", "\t")+"\n")
+
 
 # This checks if the input is a single file/directory or multiple #
 if multiple:
-    inputs = Input.split(",")
-    if os.path.isfile(inputs[0]):
-        MFile = True
-    elif os.path.isdir(inputs[0]):
-        MDirectory = True
+    if re.search(',', str(Input[0])):
+        foo = Input[0].split(',')
+        if os.path.isdir(foo[0]):
+            MDirectory = True
+        elif os.path.isfile(foo[0]):
+            MFile = True
+    elif type(Input) is list:
+        inputs = Input[0]
+        if os.path.isfile(inputs):
+            MFile = True
+        elif os.path.isdir(inputs):
+            MDirectory = True
     else:
         print "Input neither file or directory"
         exit
@@ -100,9 +114,21 @@ def Typefinder(File):
 
 
 # This builds a meta value from the filename based on a provided delimitor and an exlusive number of parts to include #
-def buildMeta(File, div, parts):
-    fileInfo = File.split(div)
-    meta = "".join(fileInfo[:parts])
+def buildMeta(File, sep):
+    things = sep.split(',')
+    div = things[0]
+    if len(things) > 1:
+        parts = things[1:]
+        fileInfo = File.split(div)
+        meta = ""
+        for part in parts[:-1]:
+            meta += fileInfo[int(part)]
+            meta += '_'
+        meta += fileInfo[int(parts[-1])]
+    else:
+        parts = int(things[1])
+        fileInfo = File.split(div)
+        meta = "_".join(fileInfo[:parts])
     return meta
 
 
@@ -152,21 +178,23 @@ def findCommonParts(File):
         if "lane" in headers:
             print "No lane in %s" % File
             exit
+        lane = ""
     if Readfound:
         if Readfound.group(1) == "I":
             paired_end = ""
         elif Readfound.group(1) == "R":
             paired_end = Readfound.group(2)
-        else:
-            if "read" in headers:
-                print "No read in filename"
-                exit
+    else:
+        if "read" in headers:
+            print "No read in filename"
+            exit
+        paired_end = ""
     if Barcodefound:
         barcode = Barcodefound.group(1)
     else:
         if "barcode" in headers:
             print "Barcodes not in filename %s" % File
-    barcode = ""
+        barcode = ""
     return lane, paired_end, barcode
 
 
@@ -244,7 +272,10 @@ def writeData(File, out, order, headers, lane, paired_end, barcode, meta, fileTy
 # What to do if a single file #
 if File:
     lane, read, barcode = findCommonParts(Input)
-    meta = buildMeta(Input, metaBuild)
+    if metaCustom:
+        meta = metaCustom
+    else:
+        meta = buildMeta(Input, metaBuild)
     if metaFormat:
         meta = getMeta(metaFormat)
     elif metaFile:
@@ -264,8 +295,11 @@ elif Directory:
         lane, paired_end, barcode = findCommonParts(val)
         parts = metaBuild[0]
         div = metaBuild[1]
-        meta = buildMeta(val, parts, div)
         file_path = Input+val
+        if metaCustom:
+            meta = metaCustom
+        else:
+            meta = buildMeta(val, parts, div)
         if metaFormat:
             meta = getMeta(metaFormat)
         elif metaFile:
@@ -278,32 +312,43 @@ elif Directory:
 
 # What to do with mutiple files #
 elif MFile:
-    for val in inputs:
-        lane, paired_end, barcode = findCommonParts(val)
-        meta = buildMeta(val, metaBuild)
+    if re.search(',', str(Input[0])):
+        Input = Input[0].split(',')
+    for val in Input:
+        parts = val.split('/')
+        Fi = parts[-1]
+        lane, paired_end, barcode = findCommonParts(Fi)
+        if metaCustom:
+            meta = metaCustom
+        else:
+            meta = buildMeta(Fi, metaBuild)
         if metaFormat:
             meta = getMeta(metaFormat)
         elif metaFile:
             meta = grabMeta(metaFile)
             meta = meta[0]
         elif findType:
-            fileType = Typefinder(val)
-        else:
-            writeData(val, out, order, headers, lane, paired_end, barcode, meta, fileType, ProcessOutput, ucsc_db, pipeline, ref_gene)
+            fileType = Typefinder(Fi)
+        writeData(val, out, order, headers, lane, paired_end, barcode, meta, fileType, ProcessOutput, ucsc_db, pipeline, ref_gene)
 
 
 # What to do with multiple directories #
 elif MDirectory:
-    for thing in inputs:
+    if re.search(',', str(Input[0])):
+        Input = Input[0].split(',')
+    for thing in Input:
         files = os.listdir(thing)
         sortedFiles = sorted(files)
         counter = 0
         for val in sortedFiles:
+            parts = val.split('/')
+            Fi = parts[-1]
             lane, paired_end, barcode = findCommonParts(val)
-            parts = metaBuild[0]
-            div = metaBuild[1]
-            meta = buildMeta(val, parts, div)
             file_path = thing+val
+            if metaCustom:
+                meta = metaCustom
+            else:
+                meta = buildMeta(Fi, metaBuild)
             if metaFormat:
                 meta = getMeta(metaFormat)
             elif metaFile:

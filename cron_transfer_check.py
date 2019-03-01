@@ -6,17 +6,17 @@ import re
 import csv
 import smtplib
 from email.mime.text import MIMEText
-
+# from collections import defaultdict
 
 salk = '/data/cirm/submit/neomorph.salk.edu/'
 stanford = '/data/cirm/submit/stanford/Labs/'
 email = 'wisulliv@uscsc.edu'
 Whattime = datetime.datetime.now()
 labs_salk = ['belmonte', 'bruneau', 'chi', 'crooks', 'fan', 'frazer', 'jones']
-# labs_salk = ['chi']
-# labs_salk = ['chi', 'crooks']
-# test = '/data/home/willrockout/'
-# lab_test = ['chi_test']
+labs_stanford = ['corn', 'geschwind', 'loring', 'sanford', 'snyder', 'weissman', 'wu', 'yeo']
+will_labs = ['chi', 'crooks', 'sanford', 'loring']
+chris_labs = ['corn', 'weissman', 'yeo', 'geschwind']
+paris_labs = ['fan', 'frazer', 'jones', 'belmonte', 'bruneau', 'snyder', 'wu']
 
 
 # This grabs the directories from a location
@@ -44,7 +44,7 @@ def getFiles(path, direcs, labs):
             direc_path = path + direc
             if re.search(lab, direc.lower()):
                 if lab not in lab_files.keys():
-                    lab_files[lab] = {}
+                    lab_files[lab] = {}  # Look at presetting ditionary structure with lab_file = defaultdict(lamda:defaultdict(lamda:blahblahblah
                     for root, dirs, files in os.walk(direc_path):
                         for File in files:
                             if re.search('fastq\.gz', File):
@@ -174,43 +174,43 @@ def getFiles(path, direcs, labs):
 
 
 # This grabs the base location of files from the full path
-def localGrab(new_file_dic):
+def localGrab(new_file_dic, direc_pos):
     locations = {}
     for key in new_file_dic.keys():
         for val in new_file_dic[key].keys():
             for link in new_file_dic[key][val].keys():
                 for File in new_file_dic[key][val][link]:
                     file_break = File.split('/')
-                    main_direc = file_break[5]
+                    main_direc = file_break[direc_pos]
                     if key not in locations.keys():
                         locations[key] = {}
                         if val not in locations[key].keys():
                             locations[key][val] = {}
                             if link not in locations[key][val].keys():
-                                locations[key][val][link] = []
-                                locations[key][val][link].append(main_direc)
+                                locations[key][val][link] = set()
+                                locations[key][val][link].add(main_direc)
                             else:
-                                locations[key][val][link].append(main_direc)
+                                locations[key][val][link].add(main_direc)
                         else:
                             if link not in locations[key][val].keys():
-                                locations[key][val][link] = []
-                                locations[key][val][link].append(main_direc)
+                                locations[key][val][link] = set()
+                                locations[key][val][link].add(main_direc)
                             else:
-                                locations[key][val][link].append(main_direc)
+                                locations[key][val][link].add(main_direc)
                     else:
                         if val not in locations[key].keys():
                             locations[key][val] = {}
                             if link not in locations[key][val].keys():
-                                locations[key][val][link] = []
-                                locations[key][val][link].append(main_direc)
+                                locations[key][val][link] = set()
+                                locations[key][val][link].add(main_direc)
                             else:
-                                locations[key][val][link].append(main_direc)
+                                locations[key][val][link].add(main_direc)
                         else:
                             if link not in locations[key][val].keys():
-                                locations[key][val][link] = []
-                                locations[key][val][link].append(main_direc)
+                                locations[key][val][link] = set()
+                                locations[key][val][link].add(main_direc)
                             else:
-                                locations[key][val][link].append(main_direc)
+                                locations[key][val][link].add(main_direc)
     return locations
 
 
@@ -229,8 +229,8 @@ def fileNum(lab_files_dic, locations):
 
 
 # This writes a directory to a tsv file with the current time in the name
-def writeCurrent(currentFD):
-    with open('./cron_test_new_%s.txt' % Whattime, 'wb') as test:
+def writeCurrent(currentFD, path):
+    with open('%s.will_log/.new_fileCheck_%s.txt' % (path, Whattime), 'wb') as test:
         csvwriter = csv.writer(test, delimiter='\t')
         csvwriter.writerow(['#lab', 'filetype', 'link', 'filename'])
         for lab in currentFD:
@@ -322,32 +322,62 @@ def cmpDict(old, new):
     return new_files
 
 
-labfiles = getFiles(salk, getDirecs(salk, labs_salk), labs_salk)
-# writeCurrent(labfiles)
-old = readPrevious('./cron_test_new_2018-04-23 10:41:55.035189.txt')
-compared = cmpDict(old, labfiles)
-print fileNum(compared, localGrab(compared))
+def rename(path):
+    for File in os.listdir('%s.will_log' % path):
+        if re.search('old', File):
+            name_change = str(File).replace('old_fileCheck', 'older_file_check')
+            os.rename('%s.will_log/%s' % (path, File), '%s.will_log/%s' % (path, name_change))
+        elif re.search('new', File):
+            name_change = str(File).replace('new', 'old')
+            os.rename('%s.will_log/%s' % (path, File), '%s.will_log/%s' % (path, name_change))
+
+
+def Compare(path, current, Sumlist, direc_pos):
+    for File in os.listdir('%s.will_log' % path):
+        if re.search('old_fileCheck', File):
+            old = readPrevious('%s.will_log/%s' % (path, File))
+            compared = cmpDict(old, current)
+            summary = fileNum(compared, localGrab(compared, direc_pos))
+            if summary:
+                Sumlist.append(summary)
+
+
+SClabfiles = getFiles(salk, getDirecs(salk, labs_salk), labs_salk)
+NClabfiles = getFiles(stanford, getDirecs(stanford, labs_stanford), labs_stanford)
+rename(salk)
+rename(stanford)
+writeCurrent(SClabfiles, salk)
+writeCurrent(NClabfiles, stanford)
+summary = []
+Compare(salk, SClabfiles, summary, 5)
+Compare(stanford, NClabfiles, summary, 5)
+
+# for File in os.listdir('%s.will_log' % salk):
+#     if re.search('old_fileCheck', File):
+#         old = readPrevious('%s.will_log/%s' % (salk, File))
+#         compared = cmpDict(old, labfiles)
+#         summary = fileNum(compared, localGrab(compared))
+# #        print fileNum(compared, localGrab(compared))
 
 
 # Below is writing the email with above info
 
-# sum_info = open('./test_sum.txt', 'wb')
-# for item in summary_info:
-#     sum_info.write(item + '\n')
-# sum_info.close()
-# with open('./test_sum.txt', 'rb') as fp:
-#     msg = MIMEText(fp.read())
-
-# fromaddr = 'cron_file_test@ucsc.edu'
-# toaddr = 'wisulliv@ucsc.edu'
-# msg['From'] = fromaddr
-# msg['To'] = toaddr
-# msg['Subject'] = 'cron test email'
-# text = msg.as_string()
-
-# smtpObj = smtplib.SMTP('smtp.gmail.com', 587)
-# smtpObj.ehlo()
-# smtpObj.starttls()
-# smtpObj.login('wisulliv@ucsc.edu', 'Willrockout2194')
-# smtpObj.sendmail(fromaddr, toaddr, text)
-# smtpObj.quit()
+if summary:
+    sum_info = open('/data/home/willrockout/.will_cron_log/.summary_%s.txt' % Whattime, 'wb')
+    for item in summary:
+        sum_info.write('%s\n' % item)
+    sum_info.close()
+    with open('/data/home/willrockout/.will_cron_log/.summary_%s.txt' % Whattime, 'rb') as fp:
+        msg = MIMEText(fp.read())
+    fromaddr = 'cron_file_test@ucsc.edu'
+    toaddr = ['wisulliv@ucsc.edu', 'pnejad@ucsc.edu', 'cjvillar@ucsc.edu', 'clayfischer@ucsc.edu']
+    msg['From'] = fromaddr
+    msg['To'] = ", ".join(toaddr)
+    msg['Subject'] = 'Files transfered from Salk and Stanford'
+    text = msg.as_string()
+    smtpObj = smtplib.SMTP('smtp.gmail.com', 587)
+    smtpObj.ehlo()
+    smtpObj.starttls()
+    smtpObj.login('wisulliv@ucsc.edu', 'fexpovuwyolkgdra')
+    smtpObj.sendmail(fromaddr, toaddr, text)
+    smtpObj.quit()
