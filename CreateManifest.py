@@ -3,13 +3,13 @@ import os
 import re
 
 def multi(args):
-    if re.search(',', str(args.Input[0])):
-        foo = args.Input[0].split(',')
+    if re.search(',', str(args.Inputs[0])):
+        foo = args.Inputs[0].split(',')
         if os.path.isdir(foo[0]):
             return "MDirectory"
         elif os.path.isfile(foo[0]):
             return "MFile"
-    elif type(args.Input) is list:
+    elif type(args.Inputs) is list:
         if os.path.isfile(args.Inputs[0]):
             return "MFile"
         elif os.path.isdir(args.Inputs[0]):
@@ -17,9 +17,9 @@ def multi(args):
         else:
             return "Input neither file or directory"
     else:
-        if os.path.isfile(args.Input):
+        if os.path.isfile(args.Inputs):
             return "File"
-        elif os.path.isdir(args.Input):
+        elif os.path.isdir(args.Inputs):
             return "Directory"
         else:
             return "Input neither file or directory"
