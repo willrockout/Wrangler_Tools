@@ -166,7 +166,7 @@ def handleBigWig(File):
 
 # This writes a manifest file with the data wanted in the order option #
 def writeData(File, out, order, headers, lane, paired_end, barcode, meta, fileType, ProcessOutput, ucsc_db, pipeline, ref_gene_set):
-    pairing = {"format": fileType, "reference_gene_set": ref_gene}
+    pairing = {"format": fileType, "reference_gene_set": ref_gene_set}
     for header in headers[:-1]:
         if header == "output":
             if fileType == "bigWig":
