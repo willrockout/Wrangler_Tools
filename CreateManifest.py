@@ -233,8 +233,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     InputType = multi(args)
-    if args.addFile:
-        args.out = open(args.addFile, "a")
+    if args.outputFileAdd:
+        args.out = open(args.outputFileAdd, "a")
     else:
         args.out = open(args.outputFile, "wb")
         args.out.write(args.order.replace(",", "\t") + "\n")
