@@ -254,7 +254,7 @@ if __name__ == "__main__":
         elif args.findType:
             args.fileType = Typefinder(args.Input)
         else:
-            writeData(args.Input, args.out, args.order.lower(), args.order.split(), lane, read, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene)
+            writeData(args.Input, args.out, args.order.lower(), args.order.split(), lane, read, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
 
     # What to do if a single directory #
     elif InputType == "Directory":
