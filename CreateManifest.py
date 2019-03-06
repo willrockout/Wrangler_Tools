@@ -254,7 +254,7 @@ if __name__ == "__main__":
         elif args.findType:
             args.fileType = Typefinder(args.Input)
         else:
-            writeData(args.Input, args.out, args.order.lower(), args.order.split(), lane, read, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
+            writeData(args.Input, args.out, args.order.lower(), args.order.split(","), lane, read, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
 
     # What to do if a single directory #
     elif InputType == "Directory":
@@ -277,7 +277,7 @@ if __name__ == "__main__":
                 meta = meta[counter]
             elif args.findType:
                 args.fileType = Typefinder(val)
-            writeData(file_path, args.out, args.order.lower(), args.order.split(), lane, paired_end, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
+            writeData(file_path, args.out, args.order.lower(), args.order.split(","), lane, paired_end, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
             counter += 1
 
     # What to do with multiple files #
@@ -299,7 +299,7 @@ if __name__ == "__main__":
                 meta = meta[0]
             elif args.findType:
                 args.fileType = Typefinder(Fi)
-            writeData(val, args.out, args.order.lower(), args.order.split(), lane, paired_end, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
+            writeData(val, args.out, args.order.lower(), args.order.split("<"), lane, paired_end, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
 
 
     # What to do with multiple directories #
@@ -326,7 +326,7 @@ if __name__ == "__main__":
                     meta = metalist[counter]
                 elif args.findType:
                     args.fileType = Typefinder(val)
-                writeData(file_path, args.out, args.order.lower(), args.order.split(), lane, paired_end, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
+                writeData(file_path, args.out, args.order.lower(), args.order.split(","), lane, paired_end, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
                 counter += 1
 
     else:
