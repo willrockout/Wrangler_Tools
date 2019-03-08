@@ -9,7 +9,7 @@ def multi(args):
             return "MDirectory"
         elif os.path.isfile(foo[0]):
             return "MFile"
-    elif type(args.Input) is list:
+    elif len(args.Input) > 1:
         if os.path.isfile(args.Input[0]):
             return "MFile"
         elif os.path.isdir(args.Input[0]):
@@ -17,9 +17,9 @@ def multi(args):
         else:
             return "Input neither file or directory"
     else:
-        if os.path.isfile(args.Inputs):
+        if os.path.isfile(args.Input[0]):
             return "File"
-        elif os.path.isdir(args.Inputs):
+        elif os.path.isdir(args.Input[0]):
             return "Directory"
         else:
             return "Input neither file or directory"
@@ -233,19 +233,21 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     InputType = multi(args)
+
     if args.outputFileAdd:
         out = open(args.outputFileAdd, "a")
     else:
         out = open(args.outputFile, "wb")
         out.write(args.order.replace(",", "\t") + "\n")
 
-    # What to do if a single file #
+    # What to do if a single file
     if InputType == "File":
-        lane, read, barcode = findCommonParts(args.Input, args)
+        lane, paired_end, barcode = findCommonParts(args.Input[0], args)
         if args.metaCustom:
             meta = args.metaCustom
         else:
-            meta = buildMeta(args.Input, args.metaBuild)
+            just_file = args.Input[0].split("/")
+            meta = buildMeta(just_file[-1], args.metaBuild)
         if args.metaFormat:
             meta = getMeta(args.metaFormat)
         elif args.metaFile:
@@ -254,11 +256,11 @@ if __name__ == "__main__":
         elif args.findType:
             args.fileType = Typefinder(args.Input)
         else:
-            writeData(args.Input, out, args.order.lower(), args.order.split(","), lane, read, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
+            writeData(args.Input[0], out, args.order.lower(), args.order.split(","), lane, paired_end, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
 
-    # What to do if a single directory #
+    # What to do if a single directory
     elif InputType == "Directory":
-        files = os.listdir(args.Input)
+        files = os.listdir(args.Input[0])
         sortedFiles = sorted(files)
         counter = 0
         for val in sortedFiles:
@@ -280,7 +282,7 @@ if __name__ == "__main__":
             writeData(file_path, out, args.order.lower(), args.order.split(","), lane, paired_end, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
             counter += 1
 
-    # What to do with multiple files #
+    # What to do with multiple files
     elif InputType == "MFile":
         if re.search(',', str(args.Input[0])):
             args.Input = args.Input[0].split(',')
@@ -301,8 +303,7 @@ if __name__ == "__main__":
                 args.fileType = Typefinder(Fi)
             writeData(val, out, args.order.lower(), args.order.split(","), lane, paired_end, barcode, meta, args.fileType, args.ProcessOutput, args.ucsc_db, args.pipeline, args.ref_gene_set)
 
-
-    # What to do with multiple directories #
+    # What to do with multiple directories
     elif InputType == "MDirectory":
         if re.search(',', str(args.Input[0])):
             args.Input = args.Input[0].split(',')
