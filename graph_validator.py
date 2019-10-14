@@ -3,6 +3,7 @@ from ingest.api.ingestapi import IngestApi
 from ingest.importer.importer import XlsImporter
 import os
 import argparse
+import re
 
 
 class GraphValidator:
@@ -18,6 +19,10 @@ class GraphValidator:
         self.path_dict = {}
         self.process_prot_link = {}
         self.high_level = {}
+        self.known_position = ["donor_organism", "library_preparation_protocol", "sequencing_protocol"]
+        self.unknown_position = ["specimen_from_organism", "cell_line", "organoid", "collection_protocol",
+                                 "enrichment_protocol", "dissociation_protocol", "cell_suspension"]
+        self.high_level_paths = []
 
     def get_all_links(self):
         order_list = ['file', 'biomaterial', 'process']
@@ -89,7 +94,7 @@ class GraphValidator:
                     entity_path = entity_full_path[1:]
                     for key in self.process_prot_link:
                         if key in entity_path:
-                            entity_path[entity_path.index(key)] = key + '-' + '-'.join(self.process_prot_link[key])
+                            entity_path[entity_path.index(key)] = key + '/' + '/'.join(self.process_prot_link[key])
                     entity_path.reverse()
                     entity_path = ':'.join(entity_path)
                     if entity_path not in self.path_dict.keys():
@@ -119,9 +124,22 @@ class GraphValidator:
         for key, val in self.high_level.items():
             print('Number of %s: %s' % (key, len(val)))
 
+    # def build_high_level_graphs(self):
+    #     for entities, files in self.path_dict.item():
+    #         high_level_path = []
+    #         for entity in entities.split(':'):
+    #             if entities.split(':').index(entity) == 0:
+    #                 if entity in self.high_level['donor_organism']:
+    #                     high_level_path.append('donor_organism')
+    #             elif re.search("-", entity):
+    #                 for protocol in entity.split("/")[1:]:
+    #                     if protocol in
+    #
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="This script provided a number of different tools to obtain graph information from a spreadsheet")
+    parser = argparse.ArgumentParser(description="This script provided a number of different "
+                                                 "tools to obtain graph information from a spreadsheet")
     parser.add_argument('--input_file', '-i', help='Input excel spreadsheet')
     parser.add_argument('--summary', '-sum', action='store_true', help='Summary of spreadsheet')
     parser.add_argument('--stdout', '-sto', action='store_true', help='Output full paths')
@@ -133,6 +151,7 @@ if __name__ == '__main__':
     pathFinder.add_process_links()
     pathFinder.identify_float()
     pathFinder.find_all_paths()
+    # print(pathFinder.path_dict.items())
 
     if args.summary:
         pathFinder.gather_entity_info()
